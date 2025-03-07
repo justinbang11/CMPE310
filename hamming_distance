@@ -1,0 +1,116 @@
+section .data
+    prompt1 db "Enter first string: ", 0
+    prompt1_len equ $ - prompt1
+    prompt2 db "Enter second string: ", 0
+    prompt2_len equ $ - prompt2
+    result db "Hamming distance: ", 0
+    result_len equ $ - result
+    newline db 10, 0
+
+section .bss
+    str1 resb 256          ; Buffer for first string (255 chars)
+    str2 resb 256          ; Buffer for second string (255 chars)
+    len1 resb 4            ; Length of first string
+    len2 resb 4            ; Length of second string
+    distance resb 4        ; Hamming distance result
+
+section .text
+    global _start
+
+_start:
+    ; Prompt for first string
+    mov eax, 4          
+    mov ebx, 1           
+    mov ecx, prompt1
+    mov edx, prompt1_len
+    int 0x80
+
+    ; Read first string
+    mov eax, 3            
+    mov ebx, 0            
+    mov ecx, str1
+    mov edx, 255          
+    int 0x80
+    dec eax               ; dont include the new line
+    mov [len1], eax       ; storing the length
+
+    ; Prompt for second string
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, prompt2
+    mov edx, prompt2_len
+    int 0x80
+
+    ; Read second string
+    mov eax, 3
+    mov ebx, 0
+    mov ecx, str2
+    mov edx, 255
+    int 0x80
+    dec eax               ; dont include the new line
+    mov [len2], eax       ; storing the length
+
+    ; Find minimum length
+    mov eax, [len1]
+    mov ebx, [len2]
+    cmp eax, ebx
+    jle use_len1
+    mov eax, ebx          ; minimizing the length
+use_len1:
+    mov edx, eax          ; processing the length in edx
+
+    ; Compute distance
+    xor esi, esi          ; counting the index
+    xor edi, edi          ; adding up the counters
+compare_loop:
+    cmp esi, edx          ; Check if we reached the shorter length
+    jge print_result
+
+    ; loading memory from the strings
+    mov al, [str1 + esi]  
+    mov bl, [str2 + esi]  
+    xor al, bl            ; finding the different bits
+    mov cl, 8             
+count_bits:
+    test al, 1            ; Check least significant bit
+    jz no_increment
+    inc edi               ; adding to counter if the bits for each string are different
+no_increment:
+    shr al, 1             ; Shift right to check next bit
+    dec cl
+    jnz count_bits        ; loops through all the bits
+
+    inc esi               ; moves to next character
+    jmp compare_loop
+
+print_result:
+    mov [distance], edi   
+
+    ; Print result message
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, result
+    mov edx, result_len
+    int 0x80
+
+    ; Convert distance to ASCII and print 
+    mov eax, [distance]
+    add eax, '0'          ; Converting to ASCII
+    mov [distance], al
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, distance
+    mov edx, 1
+    int 0x80
+
+    ; Print newline
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, newline
+    mov edx, 1
+    int 0x80
+
+    ; exit
+    mov eax, 1            
+    xor ebx, ebx          
+    int 0x80
